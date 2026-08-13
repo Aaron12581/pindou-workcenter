@@ -38,13 +38,13 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
+          
       - name: Build desktop DMG
         working-directory: source
-       run: |
-             brew install coreutils
-             perl -0pi -e 's/cd "\$desktop_root"\nnpm ci\nnpm run dist:mac/cd "\$desktop_root"\nnpm install\nnpm run dist:mac/' desktop/build-macos-arm64.sh
-             PATH="$(brew --prefix coreutils)/libexec/gnubin:$PATH" bash desktop/build-macos-arm64.sh
+        run: |
+          brew install coreutils
+          perl -0pi -e 's/cd "\$desktop_root"\nnpm ci\nnpm run dist:mac/cd "\$desktop_root"\nnpm install\nnpm run dist:mac/' desktop/build-macos-arm64.sh
+          PATH="$(brew --prefix coreutils)/libexec/gnubin:$PATH" bash desktop/build-macos-arm64.sh
       - name: Verify DMG was produced
         run: |
           test -n "$(find source/desktop/dist -maxdepth 1 -name '*.dmg' -print -quit)"
