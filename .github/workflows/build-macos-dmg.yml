@@ -41,8 +41,9 @@ jobs:
 
       - name: Build desktop DMG
         working-directory: source
-        run: |
+       run: |
              brew install coreutils
+             perl -0pi -e 's/cd "\$desktop_root"\nnpm ci\nnpm run dist:mac/cd "\$desktop_root"\nnpm install\nnpm run dist:mac/' desktop/build-macos-arm64.sh
              PATH="$(brew --prefix coreutils)/libexec/gnubin:$PATH" bash desktop/build-macos-arm64.sh
       - name: Verify DMG was produced
         run: |
