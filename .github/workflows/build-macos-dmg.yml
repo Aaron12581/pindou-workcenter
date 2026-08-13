@@ -41,7 +41,9 @@ jobs:
 
       - name: Build desktop DMG
         working-directory: source
-        run: bash desktop/build-macos-arm64.sh
+        run: |
+             brew install coreutils
+             PATH="$(brew --prefix coreutils)/libexec/gnubin:$PATH" bash desktop/build-macos-arm64.sh
       - name: Verify DMG was produced
         run: |
           test -n "$(find source/desktop/dist -maxdepth 1 -name '*.dmg' -print -quit)"
