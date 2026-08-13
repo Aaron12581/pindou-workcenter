@@ -1,0 +1,187 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://perler-pattern.local/schemas/pattern-v1.schema.json",
+  "title": "Perler Pattern Snapshot v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion", "patternId", "versionId", "width", "height",
+    "coordinateOrigin", "board", "brand", "palette", "cells",
+    "statistics", "generation", "checks", "createdAt"
+  ],
+  "properties": {
+    "schemaVersion": {"const": "1.0"},
+    "patternId": {"$ref": "#/$defs/uuid"},
+    "versionId": {"$ref": "#/$defs/uuid"},
+    "width": {"type": "integer", "minimum": 29, "maximum": 87},
+    "height": {"type": "integer", "minimum": 29, "maximum": 58},
+    "coordinateOrigin": {"const": "top-left"},
+    "board": {"$ref": "#/$defs/board"},
+    "brand": {"$ref": "#/$defs/brand"},
+    "palette": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 256,
+      "items": {"$ref": "#/$defs/paletteColor"}
+    },
+    "cells": {
+      "type": "array",
+      "maxItems": 5046,
+      "items": {"$ref": "#/$defs/cell"}
+    },
+    "statistics": {"$ref": "#/$defs/statistics"},
+    "generation": {"$ref": "#/$defs/generation"},
+    "checks": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/check"}
+    },
+    "createdAt": {"type": "string", "format": "date-time"}
+  },
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "board": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["layoutType", "cellsPerBoard", "rows", "cols", "beadDiameterMm", "boards"],
+      "properties": {
+        "layoutType": {"enum": ["single", "double_h", "double_v", "quad", "six_h"]},
+        "cellsPerBoard": {"const": 29},
+        "rows": {"type": "integer", "minimum": 1, "maximum": 2},
+        "cols": {"type": "integer", "minimum": 1, "maximum": 3},
+        "beadDiameterMm": {"const": 5},
+        "boards": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 6,
+          "items": {"$ref": "#/$defs/boardRegion"}
+        }
+      }
+    },
+    "boardRegion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "x", "y", "width", "height"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[A-B][1-3]$"},
+        "x": {"type": "integer", "minimum": 0, "multipleOf": 29},
+        "y": {"type": "integer", "minimum": 0, "multipleOf": 29},
+        "width": {"const": 29},
+        "height": {"const": 29}
+      }
+    },
+    "brand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "paletteVersion"],
+      "properties": {
+        "code": {"const": "MARD"},
+        "paletteVersion": {"const": "official-v1"}
+      }
+    },
+    "paletteColor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["index", "colorCode", "name", "hex", "rgb", "lab"],
+      "properties": {
+        "index": {"type": "integer", "minimum": 0, "maximum": 255},
+        "colorCode": {"type": "string", "minLength": 1, "maxLength": 32},
+        "name": {"type": "string", "minLength": 1, "maxLength": 120},
+        "hex": {"type": "string", "pattern": "^#[0-9A-Fa-f]{6}$"},
+        "rgb": {
+          "type": "array",
+          "prefixItems": [
+            {"type": "integer", "minimum": 0, "maximum": 255},
+            {"type": "integer", "minimum": 0, "maximum": 255},
+            {"type": "integer", "minimum": 0, "maximum": 255}
+          ],
+          "items": false
+        },
+        "lab": {
+          "type": "array",
+          "prefixItems": [
+            {"type": "number", "minimum": 0, "maximum": 100},
+            {"type": "number"},
+            {"type": "number"}
+          ],
+          "items": false
+        }
+      }
+    },
+    "cell": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y", "paletteIndex"],
+      "properties": {
+        "x": {"type": "integer", "minimum": 0},
+        "y": {"type": "integer", "minimum": 0},
+        "paletteIndex": {"type": "integer", "minimum": 0, "maximum": 255}
+      }
+    },
+    "statistics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["occupiedCells", "emptyCells", "colorCounts"],
+      "properties": {
+        "occupiedCells": {"type": "integer", "minimum": 0},
+        "emptyCells": {"type": "integer", "minimum": 0},
+        "colorCounts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["paletteIndex", "count"],
+            "properties": {
+              "paletteIndex": {"type": "integer", "minimum": 0, "maximum": 255},
+              "count": {"type": "integer", "minimum": 1}
+            }
+          }
+        }
+      }
+    },
+    "generation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["candidateType", "algorithmVersion", "parameters"],
+      "properties": {
+        "candidateType": {"enum": ["low", "standard", "rich", "custom"]},
+        "algorithmVersion": {"type": "string", "minLength": 1, "maxLength": 64},
+        "parameters": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": ["dithering", "outlineMode", "regionImportance"],
+          "properties": {
+            "dithering": {"type": "boolean"},
+            "outlineMode": {"enum": ["auto-dark", "none"]},
+            "regionImportance": {"type": "boolean"}
+          }
+        }
+      }
+    },
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "severity", "message"],
+      "properties": {
+        "code": {"type": "string", "minLength": 1, "maxLength": 64},
+        "severity": {"enum": ["info", "warning", "error"]},
+        "message": {"type": "string", "minLength": 1, "maxLength": 500},
+        "cells": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["x", "y"],
+            "properties": {
+              "x": {"type": "integer", "minimum": 0},
+              "y": {"type": "integer", "minimum": 0}
+            }
+          }
+        }
+      }
+    }
+  }
+}
+

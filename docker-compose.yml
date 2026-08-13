@@ -1,0 +1,32 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: perler
+      POSTGRES_USER: perler
+      POSTGRES_PASSWORD: perler
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U perler"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - perler_pg_data:/var/lib/postgresql/data
+
+  api:
+    build: ./services/api
+    environment:
+      PERLER_DATABASE_URL: postgresql+psycopg://perler:perler@postgres:5432/perler
+      PERLER_STORAGE_ROOT: /data/uploads
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - perler_uploads:/data/uploads
+
+volumes:
+  perler_pg_data:
+  perler_uploads:
+

@@ -1,0 +1,78 @@
+{
+  "schemaVersion": "1.0",
+  "patternId": "11111111-1111-4111-8111-111111111111",
+  "versionId": "22222222-2222-4222-8222-222222222222",
+  "width": 58,
+  "height": 58,
+  "coordinateOrigin": "top-left",
+  "board": {
+    "layoutType": "quad",
+    "cellsPerBoard": 29,
+    "rows": 2,
+    "cols": 2,
+    "beadDiameterMm": 5,
+    "boards": [
+      {"id": "A1", "x": 0, "y": 0, "width": 29, "height": 29},
+      {"id": "A2", "x": 29, "y": 0, "width": 29, "height": 29},
+      {"id": "B1", "x": 0, "y": 29, "width": 29, "height": 29},
+      {"id": "B2", "x": 29, "y": 29, "width": 29, "height": 29}
+    ]
+  },
+  "brand": {
+    "code": "MARD",
+    "paletteVersion": "official-v1"
+  },
+  "palette": [
+    {
+      "index": 0,
+      "colorCode": "M01",
+      "name": "示例白色",
+      "hex": "#FFFFFF",
+      "rgb": [255, 255, 255],
+      "lab": [100, 0, 0]
+    },
+    {
+      "index": 1,
+      "colorCode": "M02",
+      "name": "示例黄色",
+      "hex": "#F7D447",
+      "rgb": [247, 212, 71],
+      "lab": [86.4, -2.1, 72.3]
+    }
+  ],
+  "cells": [
+    {"x": 27, "y": 27, "paletteIndex": 1},
+    {"x": 28, "y": 27, "paletteIndex": 1},
+    {"x": 29, "y": 27, "paletteIndex": 1},
+    {"x": 30, "y": 27, "paletteIndex": 1},
+    {"x": 28, "y": 28, "paletteIndex": 0},
+    {"x": 29, "y": 28, "paletteIndex": 0}
+  ],
+  "statistics": {
+    "occupiedCells": 6,
+    "emptyCells": 3358,
+    "colorCounts": [
+      {"paletteIndex": 0, "count": 2},
+      {"paletteIndex": 1, "count": 4}
+    ]
+  },
+  "generation": {
+    "candidateType": "standard",
+    "algorithmVersion": "pattern-engine-0.1.0",
+    "parameters": {
+      "dithering": false,
+      "outlineMode": "auto-dark",
+      "regionImportance": true
+    }
+  },
+  "checks": [
+    {
+      "code": "SEAM_DETAIL",
+      "severity": "info",
+      "message": "主体细节跨越 A1 与 A2 拼板接缝。",
+      "cells": [{"x": 28, "y": 27}, {"x": 29, "y": 27}]
+    }
+  ],
+  "createdAt": "2026-07-28T00:00:00Z"
+}
+

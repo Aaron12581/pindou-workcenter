@@ -1,0 +1,11 @@
+fastapi==0.116.1
+uvicorn[standard]==0.35.0
+sqlalchemy==2.0.41
+psycopg[binary]==3.2.9
+pydantic-settings==2.10.1
+python-multipart==0.0.20
+alembic==1.16.4
+Pillow==11.3.0
+reportlab==4.4.9
+openai>=2.0.0,<3.0.0
+certifi>=2025.1.31

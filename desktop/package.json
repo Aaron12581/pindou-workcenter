@@ -1,0 +1,32 @@
+{
+  "name": "perler-pattern-workbench-desktop",
+  "private": true,
+  "version": "0.21.0",
+  "type": "module",
+  "main": "main.mjs",
+  "scripts": {
+    "dist:mac": "electron-builder --mac dmg --arm64 --publish never"
+  },
+  "devDependencies": {
+    "electron": "37.2.6",
+    "electron-builder": "26.0.12"
+  },
+  "build": {
+    "appId": "com.yilun.perlerworkbench",
+    "productName": "拼豆图纸工作台",
+    "asar": true,
+    "files": ["main.mjs"],
+    "extraResources": [
+      { "from": "runtime/frontend", "to": "frontend" },
+      { "from": "runtime/backend/perler-api", "to": "backend/perler-api" }
+    ],
+    "mac": {
+      "category": "public.app-category.graphics-design",
+      "target": [{ "target": "dmg", "arch": ["arm64"] }]
+    },
+    "dmg": {
+      "title": "拼豆图纸工作台",
+      "artifactName": "拼豆图纸工作台-v${version}-macOS-arm64.dmg"
+    }
+  }
+}

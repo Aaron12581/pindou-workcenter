@@ -1,0 +1,1054 @@
+openapi: 3.1.0
+info:
+  title: 拼豆图纸转化工具 API
+  version: 1.0.0
+  description: 阶段 0 冻结的 MVP API 合约。所有写请求必须携带 Idempotency-Key。
+servers:
+  - url: http://localhost:8000
+    description: 本地开发
+security:
+  - bearerAuth: []
+tags:
+  - name: Projects
+  - name: Assets
+  - name: Jobs
+  - name: TwoD
+  - name: Boards
+  - name: Patterns
+  - name: Palettes
+  - name: Exports
+
+paths:
+  /api/v1/projects:
+    get:
+      tags: [Projects]
+      operationId: listProjects
+      parameters:
+        - name: q
+          in: query
+          schema: {type: string, maxLength: 160}
+        - name: status
+          in: query
+          schema: {$ref: "#/components/schemas/ProjectStatus"}
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: 项目分页列表
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: {$ref: "#/components/schemas/Project"}
+                  nextCursor: {type: [string, "null"]}
+        default: {$ref: "#/components/responses/Error"}
+    post:
+      tags: [Projects]
+      operationId: createProject
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/CreateProjectRequest"}
+      responses:
+        "201":
+          description: 已创建
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Project"}
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/projects/{projectId}:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+    get:
+      tags: [Projects]
+      operationId: getProject
+      responses:
+        "200":
+          description: 项目详情
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Project"}
+        default: {$ref: "#/components/responses/Error"}
+    patch:
+      tags: [Projects]
+      operationId: updateProject
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                name: {type: string, minLength: 1, maxLength: 160}
+                settings: {type: object}
+              minProperties: 1
+      responses:
+        "200":
+          description: 已更新
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Project"}
+        default: {$ref: "#/components/responses/Error"}
+    delete:
+      tags: [Projects]
+      operationId: deleteProject
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "204": {description: 已软删除}
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/projects/{projectId}/duplicate:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+    post:
+      tags: [Projects]
+      operationId: duplicateProject
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "202":
+          description: 复制任务已接受
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Job"}
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/projects/{projectId}/assets/upload-intents:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+    post:
+      tags: [Assets]
+      operationId: createAssetUploadIntents
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [files]
+              properties:
+                files:
+                  type: array
+                  minItems: 1
+                  maxItems: 10
+                  items: {$ref: "#/components/schemas/UploadFileInput"}
+      responses:
+        "201":
+          description: 上传凭证
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [batchId, items]
+                properties:
+                  batchId: {$ref: "#/components/schemas/Uuid"}
+                  items:
+                    type: array
+                    items: {$ref: "#/components/schemas/UploadIntent"}
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/projects/{projectId}/assets/complete:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+    post:
+      tags: [Assets]
+      operationId: completeAssetUploads
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [batchId, items]
+              properties:
+                batchId: {$ref: "#/components/schemas/Uuid"}
+                items:
+                  type: array
+                  minItems: 1
+                  maxItems: 10
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required: [uploadId, sha256]
+                    properties:
+                      uploadId: {$ref: "#/components/schemas/Uuid"}
+                      sha256: {$ref: "#/components/schemas/Sha256"}
+      responses:
+        "201":
+          description: 已校验的素材
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: "#/components/schemas/Asset"}
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/projects/{projectId}/assets:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+    get:
+      tags: [Assets]
+      operationId: listProjectAssets
+      responses:
+        "200":
+          description: 素材队列
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: "#/components/schemas/Asset"}
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/assets/{assetId}/preprocess-settings:
+    parameters:
+      - $ref: "#/components/parameters/AssetId"
+    patch:
+      tags: [Assets]
+      operationId: updateAssetPreprocessSettings
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/PreprocessSettings"}
+      responses:
+        "200":
+          description: 已更新
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Asset"}
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/assets/{assetId}:
+    parameters:
+      - $ref: "#/components/parameters/AssetId"
+    delete:
+      tags: [Assets]
+      operationId: deleteAsset
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "204": {description: 已移除}
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/projects/{projectId}/two-d-jobs:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+    post:
+      tags: [TwoD]
+      operationId: createTwoDJob
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/CreateTwoDJobRequest"}
+      responses:
+        "202":
+          description: 三候选生成任务
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Job"}
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/jobs/{jobId}:
+    parameters:
+      - $ref: "#/components/parameters/JobId"
+    get:
+      tags: [Jobs]
+      operationId: getJob
+      responses:
+        "200":
+          description: 任务状态
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Job"}
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/jobs/{jobId}/retry:
+    parameters:
+      - $ref: "#/components/parameters/JobId"
+    post:
+      tags: [Jobs]
+      operationId: retryJob
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "202":
+          description: 已重试
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Job"}
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/projects/{projectId}/two-d-candidates:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+    get:
+      tags: [TwoD]
+      operationId: listTwoDCandidates
+      responses:
+        "200":
+          description: 2D 候选
+          content:
+            application/json:
+              schema:
+                type: array
+                maxItems: 3
+                items: {$ref: "#/components/schemas/TwoDCandidate"}
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/two-d-candidates/{candidateId}/select:
+    parameters:
+      - $ref: "#/components/parameters/CandidateId"
+    post:
+      tags: [TwoD]
+      operationId: selectTwoDCandidate
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: 正式 2D 资产
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/TwoDCandidate"}
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/projects/{projectId}/board-plans/calculate:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+    post:
+      tags: [Boards]
+      operationId: calculateBoardPlan
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/BoardPlanInput"}
+      responses:
+        "200":
+          description: 未落库的计算结果
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/BoardPlan"}
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/projects/{projectId}/board-plan:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+    get:
+      tags: [Boards]
+      operationId: getBoardPlan
+      responses:
+        "200":
+          description: 当前图板方案
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/BoardPlan"}
+        default: {$ref: "#/components/responses/Error"}
+    put:
+      tags: [Boards]
+      operationId: saveBoardPlan
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/BoardPlanInput"}
+      responses:
+        "200":
+          description: 已保存并确认
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/BoardPlan"}
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/projects/{projectId}/pattern-jobs:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+    post:
+      tags: [Patterns]
+      operationId: createPatternJob
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [twoDCandidateId, boardPlanId, brandCode, paletteVersion]
+              properties:
+                twoDCandidateId: {$ref: "#/components/schemas/Uuid"}
+                boardPlanId: {$ref: "#/components/schemas/Uuid"}
+                brandCode: {const: MARD}
+                paletteVersion: {const: official-v1}
+      responses:
+        "202":
+          description: 三档图纸生成任务
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Job"}
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/projects/{projectId}/patterns:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+    get:
+      tags: [Patterns]
+      operationId: listPatterns
+      responses:
+        "200":
+          description: 图纸候选摘要
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: "#/components/schemas/PatternSummary"}
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/patterns/{patternId}:
+    parameters:
+      - $ref: "#/components/parameters/PatternId"
+    get:
+      tags: [Patterns]
+      operationId: getPattern
+      responses:
+        "200":
+          description: 当前图纸快照
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/pattern-v1.schema.json"
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/patterns/{patternId}/select:
+    parameters:
+      - $ref: "#/components/parameters/PatternId"
+    post:
+      tags: [Patterns]
+      operationId: selectPattern
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: 已确认候选
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/PatternSummary"}
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/patterns/{patternId}/working-copy:
+    parameters:
+      - $ref: "#/components/parameters/PatternId"
+    patch:
+      tags: [Patterns]
+      operationId: updatePatternWorkingCopy
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - name: If-Match
+          in: header
+          required: true
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [baseVersionId, operations]
+              properties:
+                baseVersionId: {$ref: "#/components/schemas/Uuid"}
+                operations:
+                  type: array
+                  minItems: 1
+                  maxItems: 1000
+                  items: {$ref: "#/components/schemas/PatternOperation"}
+      responses:
+        "200":
+          description: 工作副本已保存
+          headers:
+            ETag:
+              schema: {type: string}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/WorkingCopyResult"}
+        "409": {$ref: "#/components/responses/VersionConflict"}
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/patterns/{patternId}/versions:
+    parameters:
+      - $ref: "#/components/parameters/PatternId"
+    get:
+      tags: [Patterns]
+      operationId: listPatternVersions
+      responses:
+        "200":
+          description: 版本记录
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: "#/components/schemas/PatternVersion"}
+        default: {$ref: "#/components/responses/Error"}
+    post:
+      tags: [Patterns]
+      operationId: createPatternVersion
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [trigger]
+              properties:
+                trigger: {enum: [manual, autosave]}
+      responses:
+        "201":
+          description: 不可变版本
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/PatternVersion"}
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/patterns/{patternId}/versions/{versionId}/restore:
+    parameters:
+      - $ref: "#/components/parameters/PatternId"
+      - $ref: "#/components/parameters/VersionId"
+    post:
+      tags: [Patterns]
+      operationId: restorePatternVersion
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "201":
+          description: 由历史快照创建的新版本
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/PatternVersion"}
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/patterns/{patternId}/inspect:
+    parameters:
+      - $ref: "#/components/parameters/PatternId"
+    post:
+      tags: [Patterns]
+      operationId: inspectPattern
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "202":
+          description: 检查任务
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Job"}
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/patterns/{patternId}/approve:
+    parameters:
+      - $ref: "#/components/parameters/PatternId"
+    post:
+      tags: [Patterns]
+      operationId: approvePattern
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: 图纸已审核
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/PatternSummary"}
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/bead-brands:
+    get:
+      tags: [Palettes]
+      operationId: listBeadBrands
+      responses:
+        "200":
+          description: 可用品牌
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: "#/components/schemas/BeadBrand"}
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/bead-brands/{brandCode}/colors:
+    parameters:
+      - name: brandCode
+        in: path
+        required: true
+        schema: {const: MARD}
+    get:
+      tags: [Palettes]
+      operationId: listBeadColors
+      parameters:
+        - name: paletteVersion
+          in: query
+          required: true
+          schema: {const: official-v1}
+      responses:
+        "200":
+          description: 色库
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: "#/components/schemas/BeadColor"}
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/patterns/{patternId}/exports:
+    parameters:
+      - $ref: "#/components/parameters/PatternId"
+    post:
+      tags: [Exports]
+      operationId: createExport
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/CreateExportRequest"}
+      responses:
+        "202":
+          description: 导出任务
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ExportJob"}
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/exports/{exportId}:
+    parameters:
+      - $ref: "#/components/parameters/ExportId"
+    get:
+      tags: [Exports]
+      operationId: getExport
+      responses:
+        "200":
+          description: 导出状态与文件
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ExportJob"}
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/projects/{projectId}/exports:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+    get:
+      tags: [Exports]
+      operationId: listProjectExports
+      responses:
+        "200":
+          description: 导出历史
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: "#/components/schemas/ExportJob"}
+        default: {$ref: "#/components/responses/Error"}
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: {type: string, minLength: 16, maxLength: 160}
+    Cursor:
+      name: cursor
+      in: query
+      schema: {type: string}
+    PageSize:
+      name: pageSize
+      in: query
+      schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+    ProjectId: {name: projectId, in: path, required: true, schema: {$ref: "#/components/schemas/Uuid"}}
+    AssetId: {name: assetId, in: path, required: true, schema: {$ref: "#/components/schemas/Uuid"}}
+    JobId: {name: jobId, in: path, required: true, schema: {$ref: "#/components/schemas/Uuid"}}
+    CandidateId: {name: candidateId, in: path, required: true, schema: {$ref: "#/components/schemas/Uuid"}}
+    PatternId: {name: patternId, in: path, required: true, schema: {$ref: "#/components/schemas/Uuid"}}
+    VersionId: {name: versionId, in: path, required: true, schema: {$ref: "#/components/schemas/Uuid"}}
+    ExportId: {name: exportId, in: path, required: true, schema: {$ref: "#/components/schemas/Uuid"}}
+  responses:
+    Error:
+      description: 统一错误
+      content:
+        application/problem+json:
+          schema: {$ref: "#/components/schemas/ErrorResponse"}
+    VersionConflict:
+      description: 编辑版本冲突
+      content:
+        application/problem+json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/ErrorResponse"
+              - type: object
+                properties:
+                  code: {const: PATTERN_VERSION_CONFLICT}
+  schemas:
+    Uuid: {type: string, format: uuid}
+    DateTime: {type: string, format: date-time}
+    Sha256: {type: string, pattern: "^[0-9a-f]{64}$"}
+    ProjectStatus: {enum: [draft, processing, editable, approved, exported, failed]}
+    ProjectStage: {enum: [material, two_d, board, candidate, edit, export]}
+    JobStatus: {enum: [queued, running, succeeded, failed, canceled]}
+    Project:
+      type: object
+      additionalProperties: false
+      required: [id, name, status, currentStage, beadDiameterMm, createdAt, updatedAt]
+      properties:
+        id: {$ref: "#/components/schemas/Uuid"}
+        name: {type: string}
+        status: {$ref: "#/components/schemas/ProjectStatus"}
+        currentStage: {$ref: "#/components/schemas/ProjectStage"}
+        beadBrandCode: {type: [string, "null"]}
+        beadDiameterMm: {const: 5}
+        settings: {type: object}
+        createdAt: {$ref: "#/components/schemas/DateTime"}
+        updatedAt: {$ref: "#/components/schemas/DateTime"}
+    CreateProjectRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 160}
+        beadBrandCode: {const: MARD, default: MARD}
+    UploadFileInput:
+      type: object
+      additionalProperties: false
+      required: [fileName, mimeType, fileSize, sequenceNo]
+      properties:
+        fileName: {type: string, minLength: 1, maxLength: 255}
+        mimeType: {enum: [image/jpeg, image/png, image/webp]}
+        fileSize: {type: integer, minimum: 1, maximum: 26214400}
+        sequenceNo: {type: integer, minimum: 1, maximum: 10}
+    UploadIntent:
+      type: object
+      additionalProperties: false
+      required: [uploadId, method, uploadUrl, expiresAt]
+      properties:
+        uploadId: {$ref: "#/components/schemas/Uuid"}
+        method: {const: PUT}
+        uploadUrl: {type: string, format: uri}
+        requiredHeaders: {type: object, additionalProperties: {type: string}}
+        expiresAt: {$ref: "#/components/schemas/DateTime"}
+    Asset:
+      type: object
+      additionalProperties: false
+      required: [id, projectId, sequenceNo, role, mimeType, widthPx, heightPx, fileSize, sha256]
+      properties:
+        id: {$ref: "#/components/schemas/Uuid"}
+        projectId: {$ref: "#/components/schemas/Uuid"}
+        parentAssetId: {oneOf: [{$ref: "#/components/schemas/Uuid"}, {type: "null"}]}
+        sequenceNo: {type: integer, minimum: 1, maximum: 10}
+        role: {enum: [original, cropped, removed_bg, two_d, preview]}
+        mimeType: {enum: [image/jpeg, image/png, image/webp]}
+        widthPx: {type: integer, minimum: 1}
+        heightPx: {type: integer, minimum: 1}
+        fileSize: {type: integer, minimum: 1}
+        sha256: {$ref: "#/components/schemas/Sha256"}
+        alphaChannel: {type: boolean}
+        metadata: {type: object}
+    PreprocessSettings:
+      type: object
+      additionalProperties: false
+      properties:
+        removeBackground: {type: boolean}
+        cropMode: {enum: [none, contain_subject, manual]}
+        crop:
+          type: object
+          additionalProperties: false
+          required: [x, y, width, height]
+          properties:
+            x: {type: number, minimum: 0, maximum: 1}
+            y: {type: number, minimum: 0, maximum: 1}
+            width: {type: number, exclusiveMinimum: 0, maximum: 1}
+            height: {type: number, exclusiveMinimum: 0, maximum: 1}
+        subjectRelationship: {enum: [single, group, primary_and_secondary]}
+    Job:
+      type: object
+      additionalProperties: false
+      required: [id, projectId, type, status, progress, attempt, maxAttempts, createdAt]
+      properties:
+        id: {$ref: "#/components/schemas/Uuid"}
+        projectId: {$ref: "#/components/schemas/Uuid"}
+        assetId: {oneOf: [{$ref: "#/components/schemas/Uuid"}, {type: "null"}]}
+        type: {enum: [preprocess, two_d, pattern, inspect, export]}
+        status: {$ref: "#/components/schemas/JobStatus"}
+        progress: {type: integer, minimum: 0, maximum: 100}
+        attempt: {type: integer, minimum: 0}
+        maxAttempts: {type: integer, minimum: 1, maximum: 10}
+        result: {type: object}
+        error:
+          oneOf:
+            - {$ref: "#/components/schemas/ErrorResponse"}
+            - {type: "null"}
+        createdAt: {$ref: "#/components/schemas/DateTime"}
+    CreateTwoDJobRequest:
+      type: object
+      additionalProperties: false
+      required: [sourceAssetId, composition, detailLevel, outlineMode, backgroundMode]
+      properties:
+        sourceAssetId: {$ref: "#/components/schemas/Uuid"}
+        composition: {enum: [full_body, half_body, big_head]}
+        detailLevel: {enum: [simple, standard, rich]}
+        outlineMode: {enum: [auto_dark, none]}
+        backgroundMode: {enum: [transparent, simplified]}
+    TwoDCandidate:
+      type: object
+      additionalProperties: false
+      required: [id, candidateNo, outputAssetId, composition, detailLevel, status]
+      properties:
+        id: {$ref: "#/components/schemas/Uuid"}
+        candidateNo: {type: integer, minimum: 1, maximum: 3}
+        outputAssetId: {$ref: "#/components/schemas/Uuid"}
+        composition: {enum: [full_body, half_body, big_head]}
+        detailLevel: {enum: [simple, standard, rich]}
+        status: {enum: [generated, selected, rejected]}
+    BoardPlanInput:
+      type: object
+      additionalProperties: false
+      required: [layoutType, fitMode, safeMarginCells, subjectScale, offsetX, offsetY]
+      properties:
+        layoutType: {enum: [single, double_h, double_v, quad, six_h]}
+        fitMode: {enum: [contain, cover]}
+        safeMarginCells: {type: integer, minimum: 0, maximum: 5}
+        subjectScale: {type: number, exclusiveMinimum: 0}
+        offsetX: {type: number}
+        offsetY: {type: number}
+    BoardPlan:
+      type: object
+      additionalProperties: false
+      required: [layoutType, boardRows, boardCols, cellsPerBoard, gridWidth, gridHeight, beadDiameterMm, finishedWidthMm, finishedHeightMm, boards]
+      properties:
+        id: {oneOf: [{$ref: "#/components/schemas/Uuid"}, {type: "null"}]}
+        layoutType: {enum: [single, double_h, double_v, quad, six_h]}
+        boardRows: {type: integer, minimum: 1, maximum: 2}
+        boardCols: {type: integer, minimum: 1, maximum: 3}
+        cellsPerBoard: {const: 29}
+        gridWidth: {type: integer}
+        gridHeight: {type: integer}
+        beadDiameterMm: {const: 5}
+        finishedWidthMm: {type: number}
+        finishedHeightMm: {type: number}
+        boards:
+          type: array
+          minItems: 1
+          maxItems: 6
+          items:
+            type: object
+            required: [id, x, y, width, height]
+            properties:
+              id: {type: string}
+              x: {type: integer}
+              y: {type: integer}
+              width: {const: 29}
+              height: {const: 29}
+        warnings: {type: array, items: {type: string}}
+    PatternSummary:
+      type: object
+      additionalProperties: false
+      required: [id, candidateType, status, width, height, algorithmVersion]
+      properties:
+        id: {$ref: "#/components/schemas/Uuid"}
+        candidateType: {enum: [low, standard, rich, custom]}
+        status: {enum: [generated, selected, editing, approved, archived]}
+        width: {type: integer}
+        height: {type: integer}
+        currentVersionId: {oneOf: [{$ref: "#/components/schemas/Uuid"}, {type: "null"}]}
+        algorithmVersion: {type: string}
+        matchScore: {type: [number, "null"], minimum: 0, maximum: 100}
+    PatternOperation:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [type, x, y, paletteIndex]
+          properties:
+            type: {const: set_cell}
+            x: {type: integer, minimum: 0}
+            y: {type: integer, minimum: 0}
+            paletteIndex: {type: [integer, "null"], minimum: 0, maximum: 255}
+        - type: object
+          additionalProperties: false
+          required: [type, seedX, seedY, from, to]
+          properties:
+            type: {const: fill}
+            seedX: {type: integer, minimum: 0}
+            seedY: {type: integer, minimum: 0}
+            from: {type: [integer, "null"], minimum: 0, maximum: 255}
+            to: {type: [integer, "null"], minimum: 0, maximum: 255}
+        - type: object
+          additionalProperties: false
+          required: [type, rect, dx, dy, mode]
+          properties:
+            type: {const: move_region}
+            rect:
+              type: object
+              required: [x, y, width, height]
+              properties:
+                x: {type: integer, minimum: 0}
+                y: {type: integer, minimum: 0}
+                width: {type: integer, minimum: 1}
+                height: {type: integer, minimum: 1}
+            dx: {type: integer}
+            dy: {type: integer}
+            mode: {enum: [move, copy]}
+        - type: object
+          additionalProperties: false
+          required: [type, from, to]
+          properties:
+            type: {const: replace_color}
+            from: {type: integer, minimum: 0, maximum: 255}
+            to: {type: integer, minimum: 0, maximum: 255}
+      discriminator:
+        propertyName: type
+    WorkingCopyResult:
+      type: object
+      required: [patternId, baseVersionId, operationCount, statistics]
+      properties:
+        patternId: {$ref: "#/components/schemas/Uuid"}
+        baseVersionId: {$ref: "#/components/schemas/Uuid"}
+        operationCount: {type: integer, minimum: 1}
+        statistics: {type: object}
+    PatternVersion:
+      type: object
+      required: [id, patternId, versionNo, trigger, checksum, createdAt]
+      properties:
+        id: {$ref: "#/components/schemas/Uuid"}
+        patternId: {$ref: "#/components/schemas/Uuid"}
+        versionNo: {type: integer, minimum: 1}
+        trigger: {enum: [candidate_confirmed, autosave, manual, approved, pre_export]}
+        checksum: {$ref: "#/components/schemas/Sha256"}
+        changeSummary: {type: object}
+        createdAt: {$ref: "#/components/schemas/DateTime"}
+    BeadBrand:
+      type: object
+      required: [code, name, paletteVersion, sourceType, active]
+      properties:
+        code: {const: MARD}
+        name: {type: string}
+        paletteVersion: {const: official-v1}
+        sourceType: {const: official}
+        active: {type: boolean}
+    BeadColor:
+      type: object
+      required: [colorCode, hex, rgb, lab, active]
+      properties:
+        colorCode: {type: string}
+        colorName: {type: [string, "null"]}
+        hex: {type: string, pattern: "^#[0-9A-Fa-f]{6}$"}
+        rgb:
+          type: array
+          prefixItems: [{type: integer}, {type: integer}, {type: integer}]
+          items: false
+        lab:
+          type: array
+          prefixItems: [{type: number}, {type: number}, {type: number}]
+          items: false
+        active: {type: boolean}
+    CreateExportRequest:
+      type: object
+      additionalProperties: false
+      required: [patternVersionId, formats, contents]
+      properties:
+        patternVersionId: {$ref: "#/components/schemas/Uuid"}
+        formats:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: {enum: [pdf, png]}
+        contents:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: {enum: [full_pattern, board_pages, color_usage, instructions, social_preview]}
+        settings:
+          type: object
+          properties:
+            dpi: {enum: [150, 300, 600], default: 300}
+            watermark: {type: boolean, default: false}
+            pageSize: {enum: [A4, Letter], default: A4}
+    ExportJob:
+      type: object
+      required: [id, projectId, patternVersionId, status, formats, contents, resultFiles, createdAt]
+      properties:
+        id: {$ref: "#/components/schemas/Uuid"}
+        projectId: {$ref: "#/components/schemas/Uuid"}
+        patternVersionId: {$ref: "#/components/schemas/Uuid"}
+        status: {enum: [queued, running, succeeded, failed]}
+        formats: {type: array, items: {enum: [pdf, png]}}
+        contents: {type: array, items: {type: string}}
+        resultFiles:
+          type: array
+          items:
+            type: object
+            required: [fileName, mimeType, size, downloadUrl]
+            properties:
+              fileName: {type: string}
+              mimeType: {type: string}
+              size: {type: integer, minimum: 1}
+              downloadUrl: {type: string, format: uri}
+        createdAt: {$ref: "#/components/schemas/DateTime"}
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [type, title, status, code, traceId]
+      properties:
+        type: {type: string, format: uri-reference}
+        title: {type: string}
+        status: {type: integer, minimum: 400, maximum: 599}
+        code:
+          enum:
+            - VALIDATION_ERROR
+            - AUTH_REQUIRED
+            - FORBIDDEN
+            - RESOURCE_NOT_FOUND
+            - IDEMPOTENCY_CONFLICT
+            - UPLOAD_INVALID
+            - BATCH_LIMIT_EXCEEDED
+            - JOB_NOT_RETRYABLE
+            - TWO_D_REQUIRED
+            - BOARD_PLAN_REQUIRED
+            - PATTERN_VERSION_CONFLICT
+            - PALETTE_COLOR_UNKNOWN
+            - PATTERN_INVALID
+            - EXPORT_FAILED
+            - INTERNAL_ERROR
+        detail: {type: string}
+        traceId: {type: string}
+        fields: {type: object, additionalProperties: {type: string}}
